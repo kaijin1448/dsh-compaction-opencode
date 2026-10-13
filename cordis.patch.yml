@@ -1,0 +1,50 @@
+# ============================================================================
+# dsh-compaction-opencode 的 bundle patch —— 把引擎挂为 ctx.compaction
+# ============================================================================
+#
+# 【这是什么】
+#   DSH 启动时按 bundle 层栈把各插件的 patch 叠成配置树，本文件是本插件这一层。
+#
+# 【两条硬约束（沿用 DSH STORE 上架契约）】
+#   1. id 必须全局唯一且与包名一致；裸名会与其它插件的行标识冲突。
+#   2. "id: 值" 那一行绝不能写行尾注释。
+#
+# 【本插件做什么】
+#   name: 'dsh-compaction-opencode' 解析到本包 lib/index.js（宿主半侧）。
+#   该插件导出一个 CompactionEngine 子类，构造时 super(ctx, 'compaction')，
+#   于是本行成为 ctx.compaction 的唯一实现（对应 compaction-basic 那一行
+#   当前是 disabled 的，二者不可同时启用）。
+#
+#   建议同时关闭 include:compaction-basic，否则两个实现会争抢同一服务。
+#
+#   本包没有 client 半侧：压缩是纯宿主行为，不往 UI 注入任何东西。
+#
+# ============================================================================
+
+- insert:
+    - id: dsh-compaction-opencode
+      name: 'dsh-compaction-opencode'
+
+# ----------------------------------------------------------------------------
+# 可调配置（全部为默认值，留作注释以免覆盖默认；取消注释即生效）
+#
+#   阈值策略沿用 OpenCode 的 calculateCeiling，另加一道 DSH 独有约束：
+#     threshold = min(window - max(floor(window*0.1), window>=32000 ? 16000 : 0),
+#                     window - reservedCompletionTokens - headroomTokens)
+#   括号内第一项是 OpenCode 原式；第二项是因为 DSH 把回复额度也算进同一窗口，
+#   而 OpenCode 不算，所以这里必须更严。
+# ----------------------------------------------------------------------------
+# - id: dsh-compaction-opencode
+#   config:
+#     auto: true
+#     # buffer: 40000            # 显式预留；不写则用 OpenCode 的 10%/16000 规则
+#     keep: 15000               # 逐字保留的近期尾巴（token），起点对齐到 user 消息
+#     headroomTokens: 0         # 额外压低阈值的安全余量
+#     maxTokens: 32000          # 摘要请求的输出上限
+#     recentMode: surface       # surface: 保留段仍是真实 surface 节点（不写 recent-context）
+#                               # text:    保留段被 shadow 并以文本写进 recent-context（OpenCode 原行为）
+#     compactionRetries: 1      # 单次调用内允许的重复压缩轮数
+#     maxOverflowRetries: 1     # 上下文溢出后的恢复重试次数
+#     # summarizationProvider: kaijin
+#     # summarizationModel: deepseek-v4-flash-vision-exp
+#                               # 必须成对出现；省略则用最近一次真实请求的 provider/model

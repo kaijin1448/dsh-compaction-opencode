@@ -1,0 +1,13 @@
+{
+  "id": "dsh-external/dsh-compaction-opencode",
+  "version": "0.2.2",
+  "main": "./lib/index.js",
+  "description": "OpenCode's context-compaction policy as a DeepSeek Harness compaction engine.",
+  "engines": {
+    "dsh": ">=0.2.0-rc.2"
+  },
+  "contributes": {
+    "tools": [],
+    "skills": []
+  }
+}
