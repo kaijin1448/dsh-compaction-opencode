@@ -8,6 +8,10 @@
 
 引擎是**纯宿主插件**，没有 client 半侧：压缩不往 UI 注入任何东西。
 
+> **关于验证声明**：`package.json#files` 只发运行时所需的文件，**测试套件不随本包分发**。
+> 第 6 节列出的检查项数（150 / 93 / 243）是作者侧在**开发树**上跑出的记录；
+> 分发包里没有 `.scratch/`，读者无法复跑这些数字。要复现需要开发树。
+
 ---
 
 ## 1. 移植了什么
@@ -224,13 +228,15 @@ npm pack --ignore-scripts     # -> dsh-compaction-opencode-0.2.2.tgz，7 files /
 
 ## 6. 验证状态
 
+> 下表是**作者侧**记录。测试套件不随本包分发，读者无法复跑这些数字——见开头「关于验证声明」。
+
 | 套件 | 规模 | 覆盖 |
 | --- | --- | --- |
 | `.scratch/smoke/run.mjs` | **150 项通过** | 用 stub 宿主跑完整事务 S1–S11：纯函数、压力触发、区间选择、事务锁、失败路径、`compactNow`、`recentMode`、模板纠偏、溢出恢复、阴影价校验 |
 | `.scratch/verify-host.mjs` | **93 项通过** | 通过 `host-module-fallback` 加载**真实** `@deepseek-ai/*` 包：继承真实 `CompactionEngine`、`Config` 校验、真实 `createUserMessage` / `ContentBlock` / `compactCheckpointSource` 走通渲染与检查点往返；**真实端到端压缩**——真 `Context` 上的真引擎、真 `Session` 作 surface、真 `BlockAssembler` 消费真 `StreamChunk` 协议，断言锁/影价/surface 代际/线格/压缩后回到阈值以下；**真触发器路径**——通过真 `waterfall` 分发 `agent/pre-step`（压力）与 `agent/request-error`（`CONTEXT_WINDOW_EXCEEDED` 溢出），并反向断言低于阈值不压、其它错误码不接管；以及 **live 实测踩出来的三条守卫** 与 `compactNow` 的真包端到端 |
 | 打包产物（`npm pack` 解包后） | **243 项通过** | 两个套件都支持 `OC_PLUGIN_URL`，指向解包目录即可运行。这条证明 `files` 发全了运行时所需的一切，而不是只证明源码树能跑 |
 
-两个套件都在仓库根的 `.scratch/` 下，可直接 `node` 运行。
+两个套件都在**开发树**根的 `.scratch/` 下，可直接 `node` 运行——但如上文所述，它们**不在分发包里**，分发包中不存在这个目录。
 
 ### 0.2.1：修掉一个测试侧的盲点
 
